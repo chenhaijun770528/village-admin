@@ -7,13 +7,10 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;background:#f5f5f5;color:#333;font-size:14px;}
-/* 顶部 */
 .header{position:fixed;top:0;left:0;right:0;background:linear-gradient(135deg,#37474F,#546E7A);color:#fff;padding:12px 16px;z-index:100;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.15);}
 .header-title{font-size:18px;font-weight:bold;}
 .header-back{font-size:20px;cursor:pointer;padding:4px 8px;}
-/* 容器 */
 .container{padding:60px 16px 80px;max-width:750px;margin:0 auto;}
-/* 登录卡片 */
 .login-card{background:#fff;border-radius:12px;padding:32px 24px;margin:20px 0;box-shadow:0 1px 4px rgba(0,0,0,.08);}
 .login-title{font-size:18px;font-weight:bold;text-align:center;margin-bottom:20px;color:#37474F;}
 .form-group{margin-bottom:16px;}
@@ -21,15 +18,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .form-input{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;outline:none;}
 .form-input:focus{border-color:#37474F;}
 .btn-login{width:100%;padding:12px;background:#37474F;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:8px;}
-.btn-login:active{background:#263238;}
-/* 主内容 */
-.panel{padding-top:8px;}
-/* Tab */
 .tab-nav{display:flex;background:#fff;border-radius:8px;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
 .tab-nav-item{flex:1;text-align:center;padding:10px 8px;font-size:13px;color:#666;cursor:pointer;border-right:1px solid #eee;}
 .tab-nav-item:last-child{border-right:none;}
 .tab-nav-item.active{background:#37474F;color:#fff;font-weight:bold;}
-/* 卡片 */
 .card{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
 .card-name{font-size:15px;font-weight:bold;margin-bottom:4px;}
 .card-info{font-size:12px;color:#888;margin-bottom:4px;}
@@ -40,20 +32,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .badge-w{background:#FF9800;color:#fff;}
 .badge-g{background:#4CAF50;color:#fff;}
 .badge-r{background:#F44336;color:#fff;}
-/* 空状态 */
 .empty{text-align:center;padding:40px 20px;color:#999;font-size:14px;}
 .empty-icon{font-size:48px;display:block;margin-bottom:12px;}
-/* 统计 */
-.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
 .stat{background:#fff;border-radius:8px;padding:14px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.06);}
 .stat-val{font-size:24px;font-weight:bold;color:#37474F;}
 .stat-lbl{font-size:12px;color:#999;margin-top:4px;}
-/* 弹窗 */
-.mask{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;}
-.popup{background:#fff;border-radius:12px;padding:20px;width:90%;max-width:500px;max-height:80vh;overflow-y:auto;}
-.popup-t{font-size:16px;font-weight:bold;margin-bottom:12px;}
-/* toast */
-#toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;z-index:999;display:none;}
+#toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;z-index:999;display:none;pointer-events:none;}
+.cloud-status{font-size:11px;color:#888;text-align:center;padding:4px 0 8px;}
+.cloud-on{color:#4CAF50;}
+.cloud-off{color:#F44336;}
 </style>
 </head>
 <body>
@@ -66,26 +54,107 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 <div id="toast"></div>
 
 <script>
+// ========== CLOUD DB (内联) ==========
 (function() {
-  // ===== Storage =====
-  var S = {
-    get: function(k, def) {
-      try { var v = localStorage.getItem('village_' + k); return v ? JSON.parse(v) : def; } catch(e) { return def; }
+  var SUPABASE_URL = 'https://eivqbbxyllsorbvgqsju.supabase.co';
+  var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpdnFiYnh5bGxzb3Jidmdxc2p1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3MTIzMDksImV4cCI6MjA5ODI4ODMwOX0.QeKnbo1cgA0yGMOEydML3PNXatH1V1QXfW0hyxRy7KY';
+  var TABLE = 'village_data';
+  var ROW_ID = 'init';
+
+  function api(path, opts) {
+    opts = opts || {};
+    opts.headers = opts.headers || {};
+    opts.headers['apikey'] = SUPABASE_KEY;
+    opts.headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
+    opts.headers['Accept-Profile'] = 'public';
+    opts.headers['Content-Profile'] = 'public';
+    return fetch(SUPABASE_URL + path, opts).then(function(r) {
+      return r.text().then(function(t) { return { ok: r.ok, status: r.status, body: t }; });
+    });
+  }
+
+  function syncToCloud(callback) {
+    var allData = {};
+    ['accounts','registrations','villages','products','food','camps','messages'].forEach(function(key) {
+      try { allData[key] = JSON.parse(localStorage.getItem('village_' + key) || '[]'); } catch(e) { allData[key] = []; }
+    });
+    var body = JSON.stringify({ id: ROW_ID, data: allData });
+    api('/rest/v1/' + TABLE + '?id=eq.' + ROW_ID, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }, body: body
+    }).then(function(res) {
+      if (res.ok || res.status === 204) { console.log('[CloudDB] 同步成功'); if (callback) callback(true); }
+      else {
+        api('/rest/v1/' + TABLE, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' }, body: body
+        }).then(function(r2) {
+          console.log('[CloudDB] 同步' + (r2.ok || r2.status === 201 ? '成功' : '失败'), r2.status);
+          if (callback) callback(r2.ok || r2.status === 201);
+        });
+      }
+    }).catch(function(e) { console.warn('[CloudDB] 同步失败:', e.message); if (callback) callback(false); });
+  }
+
+  function loadFromCloud(timeoutMs, cb) {
+    timeoutMs = timeoutMs || 5000;
+    var timer = setTimeout(function() { console.warn('[CloudDB] 拉取超时'); if (cb) cb(false, 'timeout'); }, timeoutMs);
+    api('/rest/v1/' + TABLE + '?id=eq.' + ROW_ID + '&select=data').then(function(res) {
+      clearTimeout(timer);
+      if (!res.ok) { if (cb) cb(false, res.status); return; }
+      try {
+        var arr = JSON.parse(res.body);
+        var cloudData = arr && arr[0] && arr[0].data ? arr[0].data : null;
+        if (!cloudData) { if (cb) cb(true, 'empty'); return; }
+        console.log('[CloudDB] 拉取云端数据成功, keys:', Object.keys(cloudData).join(', '));
+        ['accounts','registrations','villages','products','food','camps','messages'].forEach(function(key) {
+          try {
+            var localRaw = localStorage.getItem('village_' + key);
+            var localArr = localRaw ? JSON.parse(localRaw) : [];
+            var cloudArr = cloudData[key] || [];
+            var seen = {}; cloudArr.forEach(function(item) { if (item && item.id) seen[item.id] = true; });
+            var merged = cloudArr.slice();
+            localArr.forEach(function(item) { if (item && item.id && !seen[item.id]) merged.push(item); });
+            localStorage.setItem('village_' + key, JSON.stringify(merged));
+          } catch(e) {}
+        });
+        if (cb) cb(true, cloudData);
+      } catch(e) { console.warn('[CloudDB] 解析失败'); if (cb) cb(false, 'parse'); }
+    }).catch(function(e) { clearTimeout(timer); console.warn('[CloudDB] 拉取异常:', e.message); if (cb) cb(false, e.message); });
+  }
+
+  window.CloudDB = {
+    loadFromPublic: function(cb, timeoutMs) { loadFromCloud(timeoutMs, cb); return { then: function(){} }; },
+    push: function(data, desc) {
+      Object.keys(data).forEach(function(key) {
+        try {
+          var ex = JSON.parse(localStorage.getItem('village_' + key) || '[]');
+          var inc = Array.isArray(data[key]) ? data[key] : [data[key]];
+          var ids = {}; ex.forEach(function(i) { if (i.id) ids[i.id] = i; });
+          inc.forEach(function(i) { if (i.id) ids[i.id] = i; });
+          localStorage.setItem('village_' + key, JSON.stringify(Object.keys(ids).map(function(k){return ids[k];})));
+        } catch(e) {}
+      });
+      console.log('[CloudDB] 本地已存:' + Object.keys(data).join(',') + ' ' + (desc||''));
+      syncToCloud(function(ok) { console.log('[CloudDB] 云端' + (ok?'同步成功':'同步失败') + ':' + (desc||'')); });
+      return { then: function(){} };
     },
-    set: function(k, v) {
-      try { localStorage.setItem('village_' + k, JSON.stringify(v)); return true; } catch(e) { return false; }
-    }
+    save: function(cb) { syncToCloud(cb); },
+    init: function(cb) { this.loadFromPublic(cb, 5000); }
+  };
+})();
+
+// ========== APP CODE ==========
+(function() {
+  var S = {
+    get: function(k, def) { try { var v = localStorage.getItem('village_' + k); return v ? JSON.parse(v) : def; } catch(e) { return def; } },
+    set: function(k, v) { try { localStorage.setItem('village_' + k, JSON.stringify(v)); return true; } catch(e) { return false; } }
   };
 
-  // ===== 状态 =====
-  var isLoggedIn = false;
-  var curTab = 'chiefs';
-
-  // ===== 管理员账号（本地，可改） =====
   var ADMIN_USER = 'admin';
   var ADMIN_PWD = 'admin123';
+  var isLoggedIn = false;
+  var curTab = 'chiefs';
+  var cloudOk = false;
 
-  // ===== toast =====
   function toast(msg) {
     var t = document.getElementById('toast');
     t.textContent = msg;
@@ -93,7 +162,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
     setTimeout(function() { t.style.display = 'none'; }, 2000);
   }
 
-  // ===== 渲染 =====
   function loadUI() {
     var c = document.getElementById('mainContainer');
     if (!isLoggedIn) { showLogin(c); }
@@ -105,14 +173,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
       '<div class="login-card">' +
         '<div class="login-title">🔐 管理员登录</div>' +
         '<div class="form-group"><label class="form-label">管理员账号</label>' +
-        '<input class="form-input" id="inUser" value="admin" placeholder="账号"></div>' +
+        '<input class="form-input" id="inUser" value="admin" placeholder="请输入账号"></div>' +
         '<div class="form-group"><label class="form-label">管理员密码</label>' +
-        '<input class="form-input" id="inPwd" type="password" placeholder="密码" value="admin123"></div>' +
-        '<button class="btn-login" onclick="doLogin()">登录</button>' +
+        '<input class="form-input" id="inPwd" type="password" placeholder="请输入密码" value="admin123"></div>' +
+        '<button class="btn-login" onclick="doAdminLogin()">登录</button>' +
       '</div>';
   }
 
-  function doLogin() {
+  window.doAdminLogin = function() {
     var u = document.getElementById('inUser').value.trim();
     var p = document.getElementById('inPwd').value;
     if (u === ADMIN_USER && p === ADMIN_PWD) {
@@ -122,165 +190,160 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
     } else {
       toast('账号或密码错误');
     }
-  }
+  };
 
   function showPanel(c) {
-    var regs = S.get('registrations', []);
     c.innerHTML =
-      '<div class="stats" id="stats"></div>' +
+      '<div class="stats" id="sStats"><div class="stat"><div class="stat-val">-</div><div class="stat-lbl">待审核</div></div><div class="stat"><div class="stat-val">-</div><div class="stat-lbl">已通过</div></div><div class="stat"><div class="stat-val">-</div><div class="stat-lbl">云状态</div></div></div>' +
+      '<div class="cloud-status" id="cloudStatus">⏳ 正在连接云端...</div>' +
       '<div class="tab-nav">' +
         '<div class="tab-nav-item active" onclick="switchTab(\'chiefs\',this)">村主任</div>' +
         '<div class="tab-nav-item" onclick="switchTab(\'roles\',this)">其他角色</div>' +
         '<div class="tab-nav-item" onclick="switchTab(\'products\',this)">农产品</div>' +
         '<div class="tab-nav-item" onclick="switchTab(\'villages\',this)">村庄</div>' +
       '</div>' +
-      '<div class="panel" id="panel"></div>';
-    renderStats();
-    renderPanel();
+      '<div class="panel" id="sPanel"><div class="empty"><span class="empty-icon">⏳</span>加载中...</div></div>';
+    // 从云端拉取数据
+    CloudDB.loadFromPublic(function(ok, info) {
+      cloudOk = ok;
+      var cs = document.getElementById('cloudStatus');
+      if (ok) { cs.innerHTML = '☁️ 云端已连接，数据已同步'; cs.className = 'cloud-status cloud-on'; }
+      else { cs.innerHTML = '⚠️ 云端未连接，使用本地数据(' + (info||'') + ')'; cs.className = 'cloud-status cloud-off'; }
+      renderStats();
+      renderPanel();
+    }, 6000);
   }
+
+  window.switchTab = function(tab, el) {
+    curTab = tab;
+    document.querySelectorAll('.tab-nav-item').forEach(function(e) { e.classList.remove('active'); });
+    el.classList.add('active');
+    renderPanel();
+  };
 
   function renderStats() {
     var regs = S.get('registrations', []);
     var pending = regs.filter(function(r) { return r.status === '待审核'; }).length;
     var passed = regs.filter(function(r) { return r.status === '已通过'; }).length;
-    var rejected = regs.filter(function(r) { return r.status === '已拒绝'; }).length;
-    document.getElementById('stats').innerHTML =
+    document.getElementById('sStats').innerHTML =
       '<div class="stat"><div class="stat-val">' + pending + '</div><div class="stat-lbl">待审核</div></div>' +
-      '<div class="stat"><div class="stat-val">' + passed + '</div><div class="stat-lbl">已通过</div></div>';
-  }
-
-  function switchTab(tab, el) {
-    curTab = tab;
-    document.querySelectorAll('.tab-nav-item').forEach(function(e) { e.classList.remove('active'); });
-    el.classList.add('active');
-    renderPanel();
+      '<div class="stat"><div class="stat-val">' + passed + '</div><div class="stat-lbl">已通过</div></div>' +
+      '<div class="stat"><div class="stat-val">' + (cloudOk ? '☁️' : '❌') + '</div><div class="stat-lbl">云状态</div></div>';
   }
 
   function renderPanel() {
-    var panel = document.getElementById('panel');
+    var panel = document.getElementById('sPanel');
     var regs = S.get('registrations', []);
-    var chiefs = regs.filter(function(r) { return (r.role || r.type) === '村主任'; });
-    var others = regs.filter(function(r) { return (r.role || r.type) !== '村主任' && r.role !== '管理员' && r.role !== '游客'; });
     var products = S.get('products', []);
     var villages = S.get('villages', []);
+    var chiefs = regs.filter(function(r) { return (r.role || r.type) === '村主任'; });
+    var others = regs.filter(function(r) { return (r.role || r.type) !== '村主任' && r.role !== '管理员' && r.role !== '游客'; });
 
-    var items = [];
-    if (curTab === 'chiefs') items = chiefs;
-    else if (curTab === 'roles') items = others;
-    else if (curTab === 'products') {
-      panel.innerHTML = products.length === 0 ? '<div class="empty"><span class="empty-icon">📦</span>暂无农产品</div>' :
-        products.map(function(p) {
-          return '<div class="card"><div class="card-name">' + esc(p.name || p.productName || '未命名') + '</div>' +
-            '<div class="card-info">价格:¥' + esc(p.price || '?') + ' | 库存:' + esc(p.stock || '?') + '</div>' +
-            '<div class="card-actions">' +
-              (p.status === '待审核' ? '<button class="btn-ok" onclick="approveProduct(\'' + (p.id || '') + '\')">通过</button><button class="btn-no" onclick="rejectProduct(\'' + (p.id || '') + '\')">拒绝</button>' : '<span class="badge badge-g">已通过</span>') +
-            '</div></div>';
-        }).join('');
-      return;
+    if (curTab === 'chiefs') {
+      if (!chiefs.length) { panel.innerHTML = '<div class="empty"><span class="empty-icon">👤</span>暂无村主任申请</div>'; return; }
+      panel.innerHTML = chiefs.map(function(r) { return makeCard(r); }).join('');
+    } else if (curTab === 'roles') {
+      if (!others.length) { panel.innerHTML = '<div class="empty"><span class="empty-icon">👥</span>暂无其他角色申请</div>'; return; }
+      panel.innerHTML = others.map(function(r) { return makeCard(r); }).join('');
+    } else if (curTab === 'products') {
+      if (!products.length) { panel.innerHTML = '<div class="empty"><span class="empty-icon">📦</span>暂无农产品</div>'; return; }
+      panel.innerHTML = products.map(function(p) {
+        var badge = p.status === '待审核' ? '<span class="badge badge-w">待审核</span>' :
+                    p.status === '已通过' ? '<span class="badge badge-g">已通过</span>' :
+                    '<span class="badge badge-r">已拒绝</span>';
+        return '<div class="card"><div class="card-name">' + esc(p.name || p.productName || '?') + ' ' + badge + '</div>' +
+          '<div class="card-info">价格:¥' + esc(p.price||'?') + ' | 库存:' + esc(p.stock||'?') + ' | ' + esc(p.village||'') + '</div>' +
+          '<div class="card-actions">' +
+            (p.status === '待审核' ? '<button class="btn-ok" onclick="approveProduct(\'' + (p.id||'') + '\')">通过</button><button class="btn-no" onclick="rejectProduct(\'' + (p.id||'') + '\')">拒绝</button>' : badge) +
+          '</div></div>';
+      }).join('');
     } else if (curTab === 'villages') {
-      panel.innerHTML = villages.length === 0 ? '<div class="empty"><span class="empty-icon">🏘️</span>暂无村庄</div>' :
-        villages.map(function(v) {
-          return '<div class="card"><div class="card-name">' + esc(v.name || '未命名') + '</div>' +
-            '<div class="card-info">地址:' + esc(v.address || '未知') + '</div></div>';
-        }).join('');
-      return;
+      if (!villages.length) { panel.innerHTML = '<div class="empty"><span class="empty-icon">🏘️</span>暂无村庄</div>'; return; }
+      panel.innerHTML = villages.map(function(v) {
+        return '<div class="card"><div class="card-name">' + esc(v.name||'?') + '</div>' +
+          '<div class="card-info">村长:' + esc(v.chiefName||'?') + ' | 电话:' + esc(v.phone||'?') + '</div></div>';
+      }).join('');
     }
-
-    if (items.length === 0) {
-      var icons = { chiefs: '👤', roles: '👥', products: '📦' };
-      var names = { chiefs: '村主任注册', roles: '其他角色注册', products: '农产品' };
-      panel.innerHTML = '<div class="empty"><span class="empty-icon">' + (icons[curTab] || '📋') + '</span>暂无' + (names[curTab] || curTab) + '申请</div>';
-      return;
-    }
-
-    panel.innerHTML = items.map(function(r) {
-      var badge = r.status === '待审核' ? '<span class="badge badge-w">待审核</span>' :
-                  r.status === '已通过' ? '<span class="badge badge-g">已通过</span>' :
-                  '<span class="badge badge-r">已拒绝</span>';
-      var name = esc(r.name || r.chiefName || r.username || '未填');
-      var role = esc(r.role || r.type || '未知');
-      var village = esc(r.village || r.registeredVillage || '未选');
-      var phone = esc(r.phone || r.tel || '未填');
-      var time = esc(r.createdAt || r.time || '');
-      var info = '角色:' + role + (village ? ' | 村庄:' + village : '') + (phone ? ' | 电话:' + phone : '') + (time ? ' | ' + time : '');
-      var actions = r.status === '待审核' ?
-        '<button class="btn-ok" onclick="doApprove(\'' + (r.id || '') + '\')">通过</button>' +
-        '<button class="btn-no" onclick="doReject(\'' + (r.id || '') + '\')">拒绝</button>' : badge;
-      return '<div class="card"><div class="card-name">' + name + ' ' + badge + '</div><div class="card-info">' + info + '</div><div class="card-actions">' + actions + '</div></div>';
-    }).join('');
   }
 
-  function doApprove(id) {
-    if (!id) { toast('无效ID'); return; }
+  function makeCard(r) {
+    var badge = r.status === '待审核' ? '<span class="badge badge-w">待审核</span>' :
+                r.status === '已通过' ? '<span class="badge badge-g">已通过</span>' :
+                '<span class="badge badge-r">已拒绝</span>';
+    var name = esc(r.name || r.chiefName || r.username || '?');
+    var role = esc(r.role || r.type || '?');
+    var village = esc(r.village || r.registeredVillage || '');
+    var phone = esc(r.phone || r.tel || '');
+    var time = esc(r.createdAt || r.time || '');
+    var info = '角色:' + role + (village ? ' | 村庄:' + village : '') + (phone ? ' | ' + phone : '') + (time ? ' | ' + time : '');
+    var actions = r.status === '待审核' ?
+      '<button class="btn-ok" onclick="doApprove(\'' + (r.id||'') + '\')">通过</button><button class="btn-no" onclick="doReject(\'' + (r.id||'') + '\')">拒绝</button>' : badge;
+    return '<div class="card"><div class="card-name">' + name + ' ' + badge + '</div><div class="card-info">' + info + '</div><div class="card-actions">' + actions + '</div></div>';
+  }
+
+  window.doApprove = function(id) {
+    if (!id) return;
     var regs = S.get('registrations', []);
     var idx = -1;
     for (var i = 0; i < regs.length; i++) { if (regs[i].id == id) { idx = i; break; } }
-    if (idx < 0) { toast('未找到记录'); return; }
+    if (idx < 0) { toast('未找到'); return; }
     var reg = regs[idx];
+    reg.status = '已通过';
+    S.set('registrations', regs);
     var role = reg.role || reg.type || '';
     var village = reg.village || reg.registeredVillage || '';
-    reg.status = '已通过';
-    regs[idx] = reg;
-    S.set('registrations', regs);
-    // 写入对应数据表
-    if (role === '村主任') {
+    if (role === '村主任' && village) {
       var v = S.get('villages', []);
-      var found = false;
-      for (var j = 0; j < v.length; j++) { if (v[j].name === village) { found = true; break; } }
-      if (!found) { v.push({ id: reg.id, name: village, chiefName: reg.name, phone: reg.phone || reg.tel || '', status: '已通过', createdAt: reg.createdAt || new Date().toISOString() }); }
+      var found = v.some(function(x) { return x.name === village; });
+      if (!found) v.push({ id: reg.id, name: village, chiefName: reg.name, phone: reg.phone||reg.tel||'', status: '已通过', createdAt: reg.createdAt||'' });
       S.set('villages', v);
     }
-    // 更新当前记录
-    regs = S.get('registrations', []);
-    S.set('registrations', regs);
+    CloudDB.save(function(ok) { console.log('[Admin] 同步云端:' + (ok?'成功':'失败')); });
     toast('已通过');
     renderStats();
     renderPanel();
-  }
+  };
 
-  function doReject(id) {
-    if (!id) { toast('无效ID'); return; }
+  window.doReject = function(id) {
+    if (!id) return;
     var regs = S.get('registrations', []);
-    var idx = -1;
-    for (var i = 0; i < regs.length; i++) { if (regs[i].id == id) { idx = i; break; } }
-    if (idx < 0) { toast('未找到记录'); return; }
-    regs[idx].status = '已拒绝';
+    for (var i = 0; i < regs.length; i++) { if (regs[i].id == id) { regs[i].status = '已拒绝'; break; } }
     S.set('registrations', regs);
+    CloudDB.save(function(ok) { console.log('[Admin] 同步云端:' + (ok?'成功':'失败')); });
     toast('已拒绝');
     renderStats();
     renderPanel();
-  }
+  };
 
-  function approveProduct(id) {
+  window.approveProduct = function(id) {
     if (!id) return;
     var ps = S.get('products', []);
     for (var i = 0; i < ps.length; i++) { if (ps[i].id == id) { ps[i].status = '已通过'; break; } }
     S.set('products', ps);
+    CloudDB.save();
     toast('已通过');
     renderPanel();
-  }
+  };
 
-  function rejectProduct(id) {
+  window.rejectProduct = function(id) {
     if (!id) return;
     var ps = S.get('products', []);
     for (var i = 0; i < ps.length; i++) { if (ps[i].id == id) { ps[i].status = '已拒绝'; break; } }
     S.set('products', ps);
+    CloudDB.save();
     toast('已拒绝');
     renderPanel();
-  }
+  };
 
   function esc(s) {
     if (s == null) return '';
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  // ===== 检查登录状态 =====
-  var saved = sessionStorage.getItem('village_admin_logged');
-  if (saved === 'true') isLoggedIn = true;
-
-  // ===== 启动 =====
+  // 检查登录状态
+  if (sessionStorage.getItem('village_admin_logged') === 'true') isLoggedIn = true;
+  // 启动
   loadUI();
-
 })();
 </script>
 </body>
