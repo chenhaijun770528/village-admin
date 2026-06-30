@@ -1,84 +1,90 @@
-// cloud_db.js - Supabase 云数据库版（localStorage优先，云端后台同步）
-// service_role key 有完全读写权限
+// cloud_db.js - Supabase 云数据库版（anon key + 读写）
 (function() {
   var SUPABASE_URL = 'https://eivqbbxyllsorbvgqsju.supabase.co';
-  var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpdnFiYnh5bGxzb3Jidmdxc2p1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjcxMjMwOSwiZXhwIjoyMDk4Mjg4MzA5fQ.druJ-whOvHcA5fGrTaEvzRChB3sV4WRMf6cWR3Ru3fw';
+  var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpdnFiYnh5bGxzb3Jidmdxc2p1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3MTIzMDksImV4cCI6MjA5ODI4ODMwOX0.QeKnbo1cgA0yGMOEydML3PNXatH1V1QXfW0hyxRy7KY';
   var TABLE = 'village_data';
   var ROW_ID = 'init';
-  var SCHEMA = 'public';
 
-  var _cloudSyncing = false;
-  var _localPending = false;
+  var _syncing = false;
 
-  function makeHeaders(extra) {
-    var h = {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'Accept-Profile': SCHEMA,
-      'Content-Profile': SCHEMA
-    };
-    if (extra) Object.keys(extra).forEach(function(k) { h[k] = extra[k]; });
-    return h;
+  function api(path, opts) {
+    opts = opts || {};
+    opts.headers = opts.headers || {};
+    opts.headers['apikey'] = SUPABASE_KEY;
+    opts.headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
+    opts.headers['Accept-Profile'] = 'public';
+    opts.headers['Content-Profile'] = 'public';
+    return fetch(SUPABASE_URL + path, opts).then(function(r) {
+      return r.text().then(function(t) {
+        return { ok: r.ok, status: r.status, body: t };
+      });
+    });
   }
 
-  function fetchJSON(url, opts) {
-    return fetch(url, opts).then(function(r) {
-      if (!r.ok) return r.text().then(function(t) { throw new Error('HTTP ' + r.status + ': ' + t.substring(0, 100)); });
-      return r.json().catch(function() { return null; });
-    }).catch(function(e) { throw e; });
-  }
-
-  // 保存全部数据到云端（后台执行，不阻塞）
+  // 保存全部数据到云端
   function syncToCloud(callback) {
-    if (_cloudSyncing) { _localPending = true; if (callback) callback(false, 'busy'); return; }
-    _cloudSyncing = true;
+    if (_syncing) { if (callback) callback(false, 'busy'); return; }
+    _syncing = true;
     var allData = {};
     var keys = ['accounts', 'registrations', 'villages', 'products', 'food', 'camps', 'messages'];
     keys.forEach(function(key) {
       try { allData[key] = JSON.parse(localStorage.getItem('village_' + key) || '[]'); }
       catch(e) { allData[key] = []; }
     });
-    fetchJSON(SUPABASE_URL + '/rest/v1/' + TABLE + '?id=eq.' + ROW_ID + '&select=data', {
-      headers: makeHeaders({ 'Accept': 'application/json' })
-    }).then(function(arr) {
-      var sha = arr && arr[0] && arr[0].data ? arr[0] : null;
-      var body = JSON.stringify({ id: ROW_ID, data: allData });
-      return fetch(SUPABASE_URL + '/rest/v1/' + TABLE, {
-        method: 'POST',
-        headers: makeHeaders({ 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' }),
-        body: body
-      }).then(function(r) {
-        if (r.ok) { console.log('[CloudDB] 云端同步成功'); if (callback) callback(true); }
-        else { console.warn('[CloudDB] 云端同步失败:', r.status); if (callback) callback(false); }
-        _cloudSyncing = false;
-        if (_localPending) { _localPending = false; syncToCloud(); }
-      });
+    var body = JSON.stringify({ id: ROW_ID, data: allData });
+    // 先尝试PATCH更新
+    api('/rest/v1/' + TABLE + '?id=eq.' + ROW_ID, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: body
+    }).then(function(res) {
+      if (res.ok || res.status === 200 || res.status === 204) {
+        console.log('[CloudDB] 云端同步成功');
+        if (callback) callback(true);
+      } else {
+        // PATCH失败则尝试POST插入新行
+        return api('/rest/v1/' + TABLE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+          body: body
+        }).then(function(res2) {
+          if (res2.ok || res2.status === 201) {
+            console.log('[CloudDB] 云端同步成功(POST)');
+            if (callback) callback(true);
+          } else {
+            console.warn('[CloudDB] 云端同步失败:', res.status, res.body.substring(0, 100));
+            if (callback) callback(false, res.status);
+          }
+          _syncing = false;
+        });
+      }
+      _syncing = false;
     }).catch(function(e) {
       console.warn('[CloudDB] 云端同步失败:', e.message);
       if (callback) callback(false, e.message);
-      _cloudSyncing = false;
+      _syncing = false;
     });
   }
 
-  window.CloudDB = {
-    // 从云端拉取 → 合并写入 localStorage（云端优先，本地新增保留）
-    loadFromPublic: function(callback, timeoutMs) {
-      var self = this;
-      timeoutMs = timeoutMs || 3000;
-      var timedOut = false;
-      var timer = setTimeout(function() {
-        timedOut = true;
-        console.warn('[CloudDB] 云端拉取超时(' + timeoutMs + 'ms)，使用本地数据');
-        if (callback) callback(false); // false = 超时/失败，但仍有本地数据
-      }, timeoutMs);
+  // 从云端拉取 → 合并到本地
+  function loadFromCloud(timeoutMs, cb) {
+    timeoutMs = timeoutMs || 5000;
+    var timer = setTimeout(function() {
+      console.warn('[CloudDB] 云端拉取超时');
+      if (cb) cb(false, 'timeout');
+    }, timeoutMs);
 
-      fetchJSON(SUPABASE_URL + '/rest/v1/' + TABLE + '?id=eq.' + ROW_ID + '&select=data', {
-        headers: makeHeaders({ 'Accept': 'application/json' })
-      }).then(function(arr) {
-        if (timedOut) return;
-        clearTimeout(timer);
+    api('/rest/v1/' + TABLE + '?id=eq.' + ROW_ID + '&select=data').then(function(res) {
+      clearTimeout(timer);
+      if (!res.ok) {
+        console.warn('[CloudDB] 拉取失败:', res.status);
+        if (cb) cb(false, res.status);
+        return;
+      }
+      try {
+        var arr = JSON.parse(res.body);
         var cloudData = arr && arr[0] && arr[0].data ? arr[0].data : null;
-        if (!cloudData) { if (callback) callback(true); return; }
+        if (!cloudData) { if (cb) cb(true, 'empty'); return; }
         console.log('[CloudDB] 拉取云端数据, keys:', Object.keys(cloudData).join(', '));
         var keys = ['accounts', 'registrations', 'villages', 'products', 'food', 'camps', 'messages'];
         keys.forEach(function(key) {
@@ -93,23 +99,26 @@
             localStorage.setItem('village_' + key, JSON.stringify(merged));
           } catch(e) {}
         });
-        if (callback) callback(true);
-      }).catch(function(e) {
-        if (timedOut) return;
-        clearTimeout(timer);
-        console.warn('[CloudDB] 拉取云端数据失败:', e.message);
-        if (callback) callback(false);
-      });
-      // 返回一个 Promise（兼容旧代码）
-      return { then: function(ok, fail) { /* 已在上面的回调处理 */ } };
-    },
+        if (cb) cb(true, cloudData);
+      } catch(e) {
+        console.warn('[CloudDB] 解析失败:', e.message);
+        if (cb) cb(false, 'parse error');
+      }
+    }).catch(function(e) {
+      clearTimeout(timer);
+      console.warn('[CloudDB] 云端拉取异常:', e.message);
+      if (cb) cb(false, e.message);
+    });
+  }
 
-    // 推送数据（本地优先，后台云端同步，永远不阻塞）
-    push: function(data, description) {
-      var self = this;
-      // 1. 立即保存到本地 localStorage（同步）
-      var keys = Object.keys(data);
-      keys.forEach(function(key) {
+  window.CloudDB = {
+    loadFromPublic: function(cb, timeoutMs) {
+      loadFromCloud(timeoutMs, cb);
+      return { then: function() {} }; // 兼容
+    },
+    push: function(data, desc) {
+      // 1. 立即本地保存
+      Object.keys(data).forEach(function(key) {
         try {
           var existing = JSON.parse(localStorage.getItem('village_' + key) || '[]');
           var incoming = Array.isArray(data[key]) ? data[key] : [data[key]];
@@ -120,23 +129,14 @@
           localStorage.setItem('village_' + key, JSON.stringify(merged));
         } catch(e) {}
       });
-      console.log('[CloudDB] 已本地保存:' + keys.join(',') + ' ' + (description || ''));
-      // 2. 后台异步同步到云端（不等待）
-      syncToCloud(function(ok, err) {
-        if (ok) console.log('[CloudDB] 云端同步成功:', description);
-        else console.log('[CloudDB] 云端同步失败（本地已保存）:', description, err);
+      console.log('[CloudDB] 本地已保存:' + Object.keys(data).join(',') + ' ' + (desc || ''));
+      // 2. 后台云端同步
+      syncToCloud(function(ok) {
+        console.log('[CloudDB] 云端同步' + (ok ? '成功' : '失败（本地已存）') + ':' + (desc || ''));
       });
-      // 3. 立即返回成功（不等待云端）
-      return Promise.resolve();
+      return { then: function() {} };
     },
-
-    // 主动触发云端全量同步
-    save: function(callback) {
-      syncToCloud(callback);
-    },
-
-    // 兼容旧接口
-    init: function(callback) { this.loadFromPublic(callback, 5000); },
-    load: function(callback) { this.loadFromPublic(callback, 5000); }
+    save: function(cb) { syncToCloud(cb); },
+    init: function(cb) { this.loadFromPublic(cb, 5000); }
   };
 })();
