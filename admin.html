@@ -9,7 +9,8 @@
 body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;background:#f5f5f5;color:#333;font-size:14px;}
 .header{position:fixed;top:0;left:0;right:0;background:linear-gradient(135deg,#37474F,#546E7A);color:#fff;padding:12px 16px;z-index:100;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.15);}
 .header-title{font-size:18px;font-weight:bold;}
-.header-back{font-size:20px;cursor:pointer;padding:4px 8px;}
+.header-actions{display:flex;gap:12px;}
+.header-btn{font-size:20px;cursor:pointer;padding:4px;}
 .container{padding:60px 16px 80px;max-width:750px;margin:0 auto;}
 .login-card{background:#fff;border-radius:12px;padding:32px 24px;margin:20px 0;box-shadow:0 1px 4px rgba(0,0,0,.08);}
 .login-title{font-size:18px;font-weight:bold;text-align:center;margin-bottom:20px;color:#37474F;}
@@ -42,19 +43,82 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .cloud-status{font-size:11px;color:#888;text-align:center;padding:4px 0 8px;}
 .cloud-on{color:#4CAF50;}
 .cloud-off{color:#F44336;}
+/* 密码修改弹窗 */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal{background:#fff;border-radius:12px;padding:24px;width:90%;max-width:400px;box-shadow:0 4px 20px rgba(0,0,0,.2);}
+.modal-title{font-size:16px;font-weight:bold;margin-bottom:16px;color:#37474F;}
+.modal-actions{display:flex;gap:10px;margin-top:16px;}
+.modal-btn{flex:1;padding:10px;border:none;border-radius:6px;font-size:14px;font-weight:bold;cursor:pointer;}
+.modal-btn-ok{background:#37474F;color:#fff;}
+.modal-btn-cancel{background:#eee;color:#333;}
+/* 公告管理 */
+.announce-list{max-height:300px;overflow-y:auto;}
+.announce-item{background:#fff;border-radius:8px;padding:12px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+.announce-text{font-size:14px;margin-bottom:6px;}
+.announce-time{font-size:11px;color:#999;}
+.announce-actions{display:flex;gap:6px;margin-top:8px;}
+.btn-edit{padding:4px 10px;background:#2196F3;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer;}
+.btn-del{padding:4px 10px;background:#F44336;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer;}
+.btn-add{width:100%;padding:10px;background:#4CAF50;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;margin-bottom:12px;}
+textarea.form-input{resize:vertical;min-height:80px;}
 </style>
 </head>
 <body>
 <div class="header">
   <span class="header-back" onclick="history.back()">←</span>
   <span class="header-title">⚙️ 后台管理</span>
-  <span style="width:40px"></span>
+  <div class="header-actions">
+    <span class="header-btn" onclick="showSettings()" title="设置">⚙️</span>
+  </div>
 </div>
 <div class="container" id="mainContainer"><div class="empty"><span class="empty-icon">⏳</span>加载中...</div></div>
 <div id="toast"></div>
 
+<!-- 设置弹窗（密码修改） -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-title">⚙️ 管理员设置</div>
+    <div class="form-group">
+      <label class="form-label">当前账号</label>
+      <input class="form-input" id="currUser" readonly>
+    </div>
+    <div class="form-group">
+      <label class="form-label">新账号（留空不改）</label>
+      <input class="form-input" id="newUser" placeholder="输入新账号">
+    </div>
+    <div class="form-group">
+      <label class="form-label">新密码（留空不改）</label>
+      <input class="form-input" id="newPwd" type="password" placeholder="输入新密码">
+    </div>
+    <div class="form-group">
+      <label class="form-label">确认新密码</label>
+      <input class="form-input" id="confirmPwd" type="password" placeholder="再次输入新密码">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-cancel" onclick="hideSettings()">取消</button>
+      <button class="modal-btn modal-btn-ok" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 公告编辑弹窗 -->
+<div class="modal-overlay" id="announceModal">
+  <div class="modal">
+    <div class="modal-title" id="announceModalTitle">📢 发布公告</div>
+    <div class="form-group">
+      <label class="form-label">公告内容</label>
+      <textarea class="form-input" id="announceText" placeholder="输入公告内容..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-cancel" onclick="hideAnnounceModal()">取消</button>
+      <button class="modal-btn modal-btn-ok" onclick="saveAnnouncement()">发布</button>
+    </div>
+  </div>
+</div>
+
 <script>
-// ========== CLOUD DB (内联) ==========
+// ========== CloudDB (内联) ==========
 (function() {
   var SUPABASE_URL = 'https://eivqbbxyllsorbvgqsju.supabase.co';
   var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpdnFiYnh5bGxzb3Jidmdxc2p1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3MTIzMDksImV4cCI6MjA5ODI4ODMwOX0.QeKnbo1cgA0yGMOEydML3PNXatH1V1QXfW0hyxRy7KY';
@@ -65,12 +129,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
     opts = opts || {};
     opts.method = opts.method || 'GET';
     opts.headers = opts.headers || {};
-    // 微信内置浏览器：key放URL参数，避免header被拦截
     var sep = path.indexOf('?') >= 0 ? '&' : '?';
     var fullUrl = SUPABASE_URL + path + sep + 'apikey=' + encodeURIComponent(SUPABASE_KEY);
     opts.headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
-    opts.headers['Accept-Profile'] = 'public';
-    opts.headers['Content-Profile'] = 'public';
     if (opts.body) opts.headers['Content-Type'] = 'application/json';
     return fetch(fullUrl, opts).then(function(r) {
       return r.text().then(function(t) { return { ok: r.ok, status: r.status, body: t }; });
@@ -79,7 +140,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 
   function syncToCloud(callback) {
     var allData = {};
-    ['accounts','registrations','villages','products','food','camps','messages'].forEach(function(key) {
+    ['accounts','registrations','villages','products','food','camps','messages','announcements'].forEach(function(key) {
       try { allData[key] = JSON.parse(localStorage.getItem('village_' + key) || '[]'); } catch(e) { allData[key] = []; }
     });
     var body = JSON.stringify({ id: ROW_ID, data: allData });
@@ -89,9 +150,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
       if (res.ok || res.status === 204) { console.log('[CloudDB] 同步成功'); if (callback) callback(true); }
       else {
         api('/rest/v1/' + TABLE, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' }, body: body
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: ROW_ID, data: allData })
         }).then(function(r2) {
-          console.log('[CloudDB] 同步' + (r2.ok || r2.status === 201 ? '成功' : '失败'), r2.status);
+          console.log('[CloudDB] 插入' + (r2.ok || r2.status === 201 ? '成功' : '失败'), r2.status);
           if (callback) callback(r2.ok || r2.status === 201);
         });
       }
@@ -108,8 +169,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
         var arr = JSON.parse(res.body);
         var cloudData = arr && arr[0] && arr[0].data ? arr[0].data : null;
         if (!cloudData) { if (cb) cb(true, 'empty'); return; }
-        console.log('[CloudDB] 拉取云端数据成功, keys:', Object.keys(cloudData).join(', '));
-        ['accounts','registrations','villages','products','food','camps','messages'].forEach(function(key) {
+        console.log('[CloudDB] 拉取云端数据成功');
+        ['accounts','registrations','villages','products','food','camps','messages','announcements'].forEach(function(key) {
           try {
             var localRaw = localStorage.getItem('village_' + key);
             var localArr = localRaw ? JSON.parse(localRaw) : [];
@@ -122,7 +183,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
         });
         if (cb) cb(true, cloudData);
       } catch(e) { console.warn('[CloudDB] 解析失败'); if (cb) cb(false, 'parse'); }
-    }).catch(function(e) { clearTimeout(timer); console.warn('[CloudDB] 拉取异常:', e.message); if (cb) cb(false, e.message); });
+    }).catch(function(e) { clearTimeout(timer); if (cb) cb(false, e.message); });
   }
 
   window.CloudDB = {
@@ -137,8 +198,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
           localStorage.setItem('village_' + key, JSON.stringify(Object.keys(ids).map(function(k){return ids[k];})));
         } catch(e) {}
       });
-      console.log('[CloudDB] 本地已存:' + Object.keys(data).join(',') + ' ' + (desc||''));
-      syncToCloud(function(ok) { console.log('[CloudDB] 云端' + (ok?'同步成功':'同步失败') + ':' + (desc||'')); });
+      syncToCloud(function(ok) { console.log('[CloudDB] 云端' + (ok?'同步成功':'失败') + ':' + (desc||'')); });
       return { then: function(){} };
     },
     save: function(cb) { syncToCloud(cb); },
@@ -146,18 +206,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
   };
 })();
 
-// ========== APP CODE ==========
+// ========== APP ==========
 (function() {
   var S = {
     get: function(k, def) { try { var v = localStorage.getItem('village_' + k); return v ? JSON.parse(v) : def; } catch(e) { return def; } },
     set: function(k, v) { try { localStorage.setItem('village_' + k, JSON.stringify(v)); return true; } catch(e) { return false; } }
   };
 
-  var ADMIN_USER = 'admin';
-  var ADMIN_PWD = 'admin123';
+  // 从 localStorage 读取管理员账号密码（可修改）
+  var ADMIN_USER = S.get('admin_user', 'admin');
+  var ADMIN_PWD = S.get('admin_pwd', 'admin123');
   var isLoggedIn = false;
   var curTab = 'chiefs';
   var cloudOk = false;
+  var editingAnnounceId = null;
 
   function toast(msg) {
     var t = document.getElementById('toast');
@@ -177,9 +239,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
       '<div class="login-card">' +
         '<div class="login-title">🔐 管理员登录</div>' +
         '<div class="form-group"><label class="form-label">管理员账号</label>' +
-        '<input class="form-input" id="inUser" value="admin" placeholder="请输入账号"></div>' +
+        '<input class="form-input" id="inUser" value="' + esc(ADMIN_USER) + '" placeholder="请输入账号"></div>' +
         '<div class="form-group"><label class="form-label">管理员密码</label>' +
-        '<input class="form-input" id="inPwd" type="password" placeholder="请输入密码" value="admin123"></div>' +
+        '<input class="form-input" id="inPwd" type="password" placeholder="请输入密码"></div>' +
         '<button class="btn-login" onclick="doAdminLogin()">登录</button>' +
       '</div>';
   }
@@ -196,6 +258,111 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
     }
   };
 
+  // ========== 设置（密码修改）==========
+  window.showSettings = function() {
+    document.getElementById('currUser').value = ADMIN_USER;
+    document.getElementById('newUser').value = '';
+    document.getElementById('newPwd').value = '';
+    document.getElementById('confirmPwd').value = '';
+    document.getElementById('settingsModal').classList.add('show');
+  };
+
+  window.hideSettings = function() {
+    document.getElementById('settingsModal').classList.remove('show');
+  };
+
+  window.saveSettings = function() {
+    var newUser = document.getElementById('newUser').value.trim();
+    var newPwd = document.getElementById('newPwd').value;
+    var confirmPwd = document.getElementById('confirmPwd').value;
+
+    if (newPwd && newPwd !== confirmPwd) { toast('两次密码不一致'); return; }
+    if (newPwd && newPwd.length < 3) { toast('密码至少3位'); return; }
+
+    if (newUser) {
+      S.set('admin_user', newUser);
+      ADMIN_USER = newUser;
+    }
+    if (newPwd) {
+      S.set('admin_pwd', newPwd);
+      ADMIN_PWD = newPwd;
+    }
+    hideSettings();
+    toast('设置已保存');
+    CloudDB.save();
+  };
+
+  // ========== 公告管理 ==========
+  function showAnnouncePanel() {
+    var announces = S.get('announcements', []);
+    var html = '';
+    html += '<button class="btn-add" onclick="showAnnounceModal()">📢 发布新公告</button>';
+    if (!announces.length) {
+      html += '<div class="empty"><span class="empty-icon">📢</span>暂无公告</div>';
+    } else {
+      html += '<div class="announce-list">';
+      announces.forEach(function(a) {
+        html += '<div class="announce-item">' +
+          '<div class="announce-text">' + esc(a.text) + '</div>' +
+          '<div class="announce-time">' + esc(a.time || '') + '</div>' +
+          '<div class="announce-actions">' +
+            '<button class="btn-edit" onclick="editAnnouncement(\'' + (a.id||'') + '\')">编辑</button>' +
+            '<button class="btn-del" onclick="deleteAnnouncement(\'' + (a.id||'') + '\')">删除</button>' +
+          '</div></div>';
+      });
+      html += '</div>';
+    }
+    document.getElementById('sPanel').innerHTML = html;
+  }
+
+  window.showAnnounceModal = function(id) {
+    editingAnnounceId = id || null;
+    document.getElementById('announceModalTitle').textContent = id ? '✏️ 编辑公告' : '📢 发布公告';
+    document.getElementById('announceText').value = '';
+    if (id) {
+      var announces = S.get('announcements', []);
+      var found = null;
+      for (var i = 0; i < announces.length; i++) { if (announces[i].id === id) { found = announces[i]; break; } }
+      if (found) document.getElementById('announceText').value = found.text || '';
+    }
+    document.getElementById('announceModal').classList.add('show');
+  };
+
+  window.hideAnnounceModal = function() {
+    document.getElementById('announceModal').classList.remove('show');
+  };
+
+  window.saveAnnouncement = function() {
+    var text = document.getElementById('announceText').value.trim();
+    if (!text) { toast('请输入公告内容'); return; }
+    var announces = S.get('announcements', []);
+    if (editingAnnounceId) {
+      for (var i = 0; i < announces.length; i++) { if (announces[i].id === editingAnnounceId) { announces[i].text = text; break; } }
+    } else {
+      announces.unshift({ id: 'a_' + Date.now(), text: text, time: new Date().toLocaleString('zh-CN'), createdAt: Date.now() });
+    }
+    S.set('announcements', announces);
+    hideAnnounceModal();
+    toast('公告已保存');
+    showAnnouncePanel();
+    CloudDB.save();
+  };
+
+  window.editAnnouncement = function(id) {
+    showAnnounceModal(id);
+  };
+
+  window.deleteAnnouncement = function(id) {
+    if (!confirm('确定删除此公告？')) return;
+    var announces = S.get('announcements', []);
+    announces = announces.filter(function(a) { return a.id !== id; });
+    S.set('announcements', announces);
+    toast('已删除');
+    showAnnouncePanel();
+    CloudDB.save();
+  };
+
+  // ========== 主面板 ==========
   function showPanel(c) {
     c.innerHTML =
       '<div class="stats" id="sStats"><div class="stat"><div class="stat-val">-</div><div class="stat-lbl">待审核</div></div><div class="stat"><div class="stat-val">-</div><div class="stat-lbl">已通过</div></div><div class="stat"><div class="stat-val">-</div><div class="stat-lbl">云状态</div></div></div>' +
@@ -203,16 +370,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
       '<div class="tab-nav">' +
         '<div class="tab-nav-item active" onclick="switchTab(\'chiefs\',this)">村主任</div>' +
         '<div class="tab-nav-item" onclick="switchTab(\'roles\',this)">其他角色</div>' +
-        '<div class="tab-nav-item" onclick="switchTab(\'products\',this)">农产品</div>' +
         '<div class="tab-nav-item" onclick="switchTab(\'villages\',this)">村庄</div>' +
+        '<div class="tab-nav-item" onclick="switchTab(\'announce\',this)">公告</div>' +
       '</div>' +
       '<div class="panel" id="sPanel"><div class="empty"><span class="empty-icon">⏳</span>加载中...</div></div>';
-    // 从云端拉取数据
     CloudDB.loadFromPublic(function(ok, info) {
       cloudOk = ok;
       var cs = document.getElementById('cloudStatus');
       if (ok) { cs.innerHTML = '☁️ 云端已连接，数据已同步'; cs.className = 'cloud-status cloud-on'; }
-      else { cs.innerHTML = '⚠️ 云端未连接，使用本地数据(' + (info||'') + ')'; cs.className = 'cloud-status cloud-off'; }
+      else { cs.innerHTML = '⚠️ 云端未连接，使用本地数据'; cs.className = 'cloud-status cloud-off'; }
       renderStats();
       renderPanel();
     }, 6000);
@@ -221,7 +387,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
   window.switchTab = function(tab, el) {
     curTab = tab;
     document.querySelectorAll('.tab-nav-item').forEach(function(e) { e.classList.remove('active'); });
-    el.classList.add('active');
+    if (el) el.classList.add('active');
     renderPanel();
   };
 
@@ -229,16 +395,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
     var regs = S.get('registrations', []);
     var pending = regs.filter(function(r) { return r.status === '待审核'; }).length;
     var passed = regs.filter(function(r) { return r.status === '已通过'; }).length;
-    document.getElementById('sStats').innerHTML =
-      '<div class="stat"><div class="stat-val">' + pending + '</div><div class="stat-lbl">待审核</div></div>' +
-      '<div class="stat"><div class="stat-val">' + passed + '</div><div class="stat-lbl">已通过</div></div>' +
-      '<div class="stat"><div class="stat-val">' + (cloudOk ? '☁️' : '❌') + '</div><div class="stat-lbl">云状态</div></div>';
+    var statsEl = document.getElementById('sStats');
+    if (statsEl) {
+      statsEl.innerHTML =
+        '<div class="stat"><div class="stat-val">' + pending + '</div><div class="stat-lbl">待审核</div></div>' +
+        '<div class="stat"><div class="stat-val">' + passed + '</div><div class="stat-lbl">已通过</div></div>' +
+        '<div class="stat"><div class="stat-val">' + (cloudOk ? '☁️' : '❌') + '</div><div class="stat-lbl">云状态</div></div>';
+    }
   }
 
   function renderPanel() {
+    if (curTab === 'announce') { showAnnouncePanel(); return; }
     var panel = document.getElementById('sPanel');
     var regs = S.get('registrations', []);
-    var products = S.get('products', []);
     var villages = S.get('villages', []);
     var chiefs = regs.filter(function(r) { return (r.role || r.type) === '村主任'; });
     var others = regs.filter(function(r) { return (r.role || r.type) !== '村主任' && r.role !== '管理员' && r.role !== '游客'; });
@@ -249,18 +418,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
     } else if (curTab === 'roles') {
       if (!others.length) { panel.innerHTML = '<div class="empty"><span class="empty-icon">👥</span>暂无其他角色申请</div>'; return; }
       panel.innerHTML = others.map(function(r) { return makeCard(r); }).join('');
-    } else if (curTab === 'products') {
-      if (!products.length) { panel.innerHTML = '<div class="empty"><span class="empty-icon">📦</span>暂无农产品</div>'; return; }
-      panel.innerHTML = products.map(function(p) {
-        var badge = p.status === '待审核' ? '<span class="badge badge-w">待审核</span>' :
-                    p.status === '已通过' ? '<span class="badge badge-g">已通过</span>' :
-                    '<span class="badge badge-r">已拒绝</span>';
-        return '<div class="card"><div class="card-name">' + esc(p.name || p.productName || '?') + ' ' + badge + '</div>' +
-          '<div class="card-info">价格:¥' + esc(p.price||'?') + ' | 库存:' + esc(p.stock||'?') + ' | ' + esc(p.village||'') + '</div>' +
-          '<div class="card-actions">' +
-            (p.status === '待审核' ? '<button class="btn-ok" onclick="approveProduct(\'' + (p.id||'') + '\')">通过</button><button class="btn-no" onclick="rejectProduct(\'' + (p.id||'') + '\')">拒绝</button>' : badge) +
-          '</div></div>';
-      }).join('');
     } else if (curTab === 'villages') {
       if (!villages.length) { panel.innerHTML = '<div class="empty"><span class="empty-icon">🏘️</span>暂无村庄</div>'; return; }
       panel.innerHTML = villages.map(function(v) {
@@ -319,26 +476,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
     renderPanel();
   };
 
-  window.approveProduct = function(id) {
-    if (!id) return;
-    var ps = S.get('products', []);
-    for (var i = 0; i < ps.length; i++) { if (ps[i].id == id) { ps[i].status = '已通过'; break; } }
-    S.set('products', ps);
-    CloudDB.save();
-    toast('已通过');
-    renderPanel();
-  };
-
-  window.rejectProduct = function(id) {
-    if (!id) return;
-    var ps = S.get('products', []);
-    for (var i = 0; i < ps.length; i++) { if (ps[i].id == id) { ps[i].status = '已拒绝'; break; } }
-    S.set('products', ps);
-    CloudDB.save();
-    toast('已拒绝');
-    renderPanel();
-  };
-
   function esc(s) {
     if (s == null) return '';
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -346,7 +483,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 
   // 检查登录状态
   if (sessionStorage.getItem('village_admin_logged') === 'true') isLoggedIn = true;
-  // 启动
   loadUI();
 })();
 </script>
