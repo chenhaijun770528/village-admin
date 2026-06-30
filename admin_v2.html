@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>后台管理</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f0f2f5;font-size:14px}
+.header{position:fixed;top:0;left:0;right:0;background:linear-gradient(135deg,#1a5e20,#2e7d32);color:white;padding:14px 16px;z-index:100;display:flex;align-items:center;justify-content:space-between}
+.header-title{font-size:18px;font-weight:bold}
+.header-right{display:flex;align-items:center}
+.btn-logout{background:rgba(255,255,255,0.2);border:none;color:white;padding:6px 14px;border-radius:6px;font-size:13px;cursor:pointer}
+.btn-logout:active{background:rgba(255,255,255,0.35)}
+.container{padding:64px 16px 80px;max-width:750px;margin:0 auto}
+.login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}
+.login-card{background:white;border-radius:16px;padding:40px 32px;width:100%;max-width:400px;box-shadow:0 4px 20px rgba(0,0,0,0.1)}
+.login-title{text-align:center;font-size:22px;font-weight:bold;color:#1a5e20;margin-bottom:6px}
+.login-sub{text-align:center;color:#888;margin-bottom:32px;font-size:13px}
+.fi{margin-bottom:18px}
+.fl{display:block;font-size:13px;color:#666;margin-bottom:6px;font-weight:500}
+.fi input{width:100%;padding:12px 14px;border:1px solid #ddd;border-radius:10px;font-size:15px;outline:none;transition:border .2s}
+.fi input:focus{border-color:#2e7d32}
+.btn-sub{width:100%;padding:14px;background:linear-gradient(135deg,#1a5e20,#2e7d32);color:white;border:none;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer}
+.btn-sub:active{opacity:.85}
+.err{color:#e53935;font-size:13px;text-align:center;margin-top:12px;display:none}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.sc{background:white;border-radius:10px;padding:14px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.sn{font-size:26px;font-weight:bold;color:#2e7d32}
+.sl{font-size:11px;color:#999;margin-top:2px}
+.tab-bar{display:flex;background:white;border-radius:10px;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.tab{flex:1;text-align:center;padding:12px 4px;font-size:12px;color:#666;cursor:pointer;border-bottom:2px solid transparent}
+.tab.on{color:#2e7d32;border-bottom-color:#2e7d32;font-weight:bold}
+.card{background:white;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.ct{font-size:15px;font-weight:bold;color:#333;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.cm{font-size:12px;color:#999;margin-bottom:4px}
+.ci{font-size:13px;color:#555;margin-bottom:3px}
+.imgs{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.imgs img{width:56px;height:56px;object-fit:cover;border-radius:6px}
+.row{display:flex;gap:8px;margin-top:10px}
+.btn{flex:1;padding:9px;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer}
+.bo{background:#2e7d32;color:white}
+.br{background:#e53935;color:white}
+.bd{background:#ff9800;color:white}
+.btn:active{opacity:.85}
+.badge{padding:2px 8px;border-radius:10px;font-size:11px}
+.bp{background:#fff3e0;color:#e65100}
+.bk{background:#e8f5e9;color:#1a5e20}
+.bj{background:#ffebee;color:#c62828}
+.empty{text-align:center;padding:40px 0;color:#bbb;font-size:14px}
+.hidden{display:none}
+#adminPage{}
+#loginPage{}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:white;padding:10px 20px;border-radius:20px;font-size:14px;z-index:9999;display:none;white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="header" id="headerBar">
+  <div class="header-title">&#x1F33F; 村庄H5后台管理</div>
+  <div class="header-right">
+    <button class="btn-logout" onclick="mylogout()">退出</button>
+  </div>
+</div>
+
+<div class="container">
+  <!-- 登录页 -->
+  <div class="login-page" id="loginPage">
+    <div class="login-card">
+      <div class="login-title">&#x1F3E0; 后台管理</div>
+      <div class="login-sub">管理员登录</div>
+      <div class="fi">
+        <label class="fl">账号</label>
+        <input id="inUser" type="text" value="admin" placeholder="账号">
+      </div>
+      <div class="fi">
+        <label class="fl">密码</label>
+        <input id="inPass" type="password" value="admin123" placeholder="密码">
+      </div>
+      <button class="btn-sub" id="btnLogin">登录</button>
+      <div class="err" id="errMsg"></div>
+    </div>
+  </div>
+
+  <!-- 管理页 -->
+  <div id="adminPage" class="hidden">
+    <div class="stats">
+      <div class="sc"><div class="sn" id="sV">0</div><div class="sl">村庄</div></div>
+      <div class="sc"><div class="sn" id="sC">0</div><div class="sl">村主任</div></div>
+      <div class="sc"><div class="sn" id="sR">0</div><div class="sl">角色</div></div>
+    </div>
+    <div class="tab-bar" id="tabBar">
+      <div class="tab on" onclick="switchTab(this,0)">村庄审核</div>
+      <div class="tab" onclick="switchTab(this,1)">村主任</div>
+      <div class="tab" onclick="switchTab(this,2)">角色审核</div>
+    </div>
+    <div id="mainList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+<script>
+(function(){
+  var ADMIN_USER = 'admin';
+  var ADMIN_PASS = 'admin123';
+  var ROLE_MAP = {
+    market:'农贸市场摊主',construction:'建筑工匠',teacher:'乡村教师',
+    student:'返乡大学生',landscape:'园林设计师','law-firm':'律师事务所',
+    lawyer:'律师',truck:'货运司机',carpool:'顺风车',massage:'按摩技师',
+    tourist:'游客',village:'村民'
+  };
+
+  function $(id){return document.getElementById(id);}
+  function ls(k){return JSON.parse(localStorage.getItem('village_'+k)||'[]');}
+  function ss(k,v){localStorage.setItem('village_'+k,JSON.stringify(v));}
+
+  function toast(msg){
+    var t=$('toastEl');
+    t.textContent=msg;
+    t.style.display='block';
+    setTimeout(function(){t.style.display='none';},1800);
+  }
+
+  function switchTab(el,idx){
+    $$('.tab').forEach(function(t){t.classList.remove('on');});
+    el.classList.add('on');
+    if(idx===0) renderVillage();
+    else if(idx===1) renderChief();
+    else renderRole();
+  }
+
+  function $$(sel){return [].slice.call(document.querySelectorAll(sel));}
+
+  function fmtTime(d){if(!d)return '';try{return new Date(d).toLocaleString('zh-CN');}catch(e){return d;}}
+
+  function renderVillage(){
+    var regs=ls('registrations').filter(function(r){return r.role==='village'||r.role==='township';});
+    var html='';
+    if(regs.length===0){
+      html='<div class="empty">暂无待审核村庄申请</div>';
+    } else {
+      regs.forEach(function(r){
+        var st=r.status||'pending';
+        var badge=st==='approved'?'<span class="badge bk">已通过</span>':st==='rejected'?'<span class="badge bj">已拒绝</span>':'<span class="badge bp">待审核</span>';
+        var imgs='';
+        if(r.images&&r.images.length){
+          r.images.slice(0,4).forEach(function(img){imgs+='<img src="'+img+'" onerror="this.style.display=\'none\'">';});
+        }
+        html+='<div class="card">'+
+          '<div class="cm">申请时间: '+fmtTime(r.appliedAt||r.createdAt)+'</div>'+
+          '<div class="ct">'+esc(r.village||r.name||'?')+' '+badge+'</div>'+
+          '<div class="ci">申请人: '+esc(r.name||'?')+' '+(r.phone||'')+'</div>'+
+          '<div class="ci">地址: '+esc(r.address||'')+'</div>'+
+          '<div class="imgs">'+imgs+'</div>';
+        if(st!=='approved'){
+          html+='<div class="row"><button class="btn bo" onclick="apV(\''+esc(r.id)+'\',\''+esc(r.village||r.name)+'\')">通过</button><button class="btn br" onclick="rjV(\''+esc(r.id)+'\')">拒绝</button></div>';
+        }
+        html+='</div>';
+      });
+    }
+    $('mainList').innerHTML=html;
+  }
+
+  function renderChief(){
+    var chiefs=ls('chiefs');
+    var all=chiefs.slice().sort(function(a,b){return((b.appliedAt||'').localeCompare(a.appliedAt||''));});
+    var html='';
+    if(all.length===0){
+      html='<div class="empty">暂无村主任数据</div>';
+    } else {
+      all.forEach(function(c){
+        var st=c.status||'pending';
+        var badge=st==='approved'?'<span class="badge bk">已通过</span>':st==='rejected'?'<span class="badge bj">已拒绝</span>':'<span class="badge bp">待审核</span>';
+        html+='<div class="card">'+
+          '<div class="cm">申请: '+fmtTime(c.appliedAt)+'</div>'+
+          '<div class="ct">'+esc(c.name||'?')+' '+badge+'</div>'+
+          '<div class="ci">村庄: '+esc(c.village||'?')+' '+(c.phone||'')+'</div>'+
+          '<div class="row">'+
+            (st!=='approved'?'<button class="btn bo" onclick="apC(\''+esc(c.id)+'\')">通过</button>':'')+
+            (st!=='rejected'?'<button class="btn br" onclick="rjC(\''+esc(c.id)+'\')">拒绝</button>':'')+
+            '<button class="btn bd" onclick="delC(\''+esc(c.id)+'\')">删除</button>'+
+          '</div>'+
+        '</div>';
+      });
+    }
+    $('mainList').innerHTML=html;
+  }
+
+  function renderRole(){
+    var regs=ls('registrations').filter(function(r){return r.role&&r.role!=='village'&&r.role!=='township';});
+    var all=regs.slice().sort(function(a,b){return((b.appliedAt||'').localeCompare(a.appliedAt||''));});
+    var html='';
+    if(all.length===0){
+      html='<div class="empty">暂无角色申请记录</div>';
+    } else {
+      all.forEach(function(r){
+        var st=r.status||'pending';
+        var badge=st==='approved'?'<span class="badge bk">已通过</span>':st==='rejected'?'<span class="badge bj">已拒绝</span>':'<span class="badge bp">待审核</span>';
+        var rt=ROLE_MAP[r.role]||r.role||'?';
+        html+='<div class="card">'+
+          '<div class="cm">'+esc(rt)+' | '+fmtTime(r.appliedAt)+'</div>'+
+          '<div class="ct">'+esc(r.name||'?')+' '+badge+'</div>'+
+          '<div class="ci">村庄: '+esc(r.village||'?')+' '+(r.phone||'')+'</div>'+
+          '<div class="row">'+
+            (st!=='approved'?'<button class="btn bo" onclick="apR(\''+esc(r.id)+'\')">通过</button>':'')+
+            (st!=='rejected'?'<button class="btn br" onclick="rjR(\''+esc(r.id)+'\')">拒绝</button>':'')+
+            '<button class="btn bd" onclick="delR(\''+esc(r.id)+'\')">删除</button>'+
+          '</div>'+
+        '</div>';
+      });
+    }
+    $('mainList').innerHTML=html;
+  }
+
+  function esc(s){if(!s)return '';return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;');}
+
+  function stats(){
+    var chiefs=ls('chiefs');
+    var regs=ls('registrations');
+    var vils=ls('villages');
+    $('sV').textContent=vils.length;
+    $('sC').textContent=chiefs.filter(function(c){return c.status==='approved';}).length;
+    $('sR').textContent=regs.filter(function(r){return r.status==='approved';}).length;
+  }
+
+  // === 审核函数 ===
+  window.apV=function(id,name){
+    var chiefs=ls('chiefs');
+    var ex=chiefs.find(function(c){return c.village===name&&c.status==='approved';});
+    if(!ex) chiefs.push({id:id||Date.now(),name:name,village:name,phone:'',status:'approved',appliedAt:new Date().toLocaleString()});
+    else {ex.status='approved';}
+    ss('chiefs',chiefs);
+    var regs=ls('registrations');
+    regs.forEach(function(r){if((r.id||'')===id||(r.village||'')===name) r.status='approved';});
+    ss('registrations',regs);
+    toast('已通过');
+    renderVillage();stats();
+  };
+  window.rjV=function(id){
+    var regs=ls('registrations');
+    regs.forEach(function(r){if((r.id||'')===id) r.status='rejected';});
+    ss('registrations',regs);
+    toast('已拒绝');
+    renderVillage();
+  };
+  window.apC=function(id){
+    var chiefs=ls('chiefs');
+    chiefs.forEach(function(c){if((c.id||'')===id) c.status='approved';});
+    ss('chiefs',chiefs);
+    var regs=ls('registrations');
+    regs.forEach(function(r){if((r.id||'')===id) r.status='approved';});
+    ss('registrations',regs);
+    toast('已通过');
+    renderChief();stats();
+  };
+  window.rjC=function(id){
+    var chiefs=ls('chiefs');
+    chiefs.forEach(function(c){if((c.id||'')===id) c.status='rejected';});
+    ss('chiefs',chiefs);
+    toast('已拒绝');
+    renderChief();
+  };
+  window.delC=function(id){
+    if(!confirm('确定删除？'))return;
+    var chiefs=ls('chiefs');
+    chiefs=chiefs.filter(function(c){return(c.id||'')!==id;});
+    ss('chiefs',chiefs);
+    toast('已删除');
+    renderChief();stats();
+  };
+  window.apR=function(id){
+    var regs=ls('registrations');
+    regs.forEach(function(r){if((r.id||'')===id) r.status='approved';});
+    ss('registrations',regs);
+    toast('已通过');
+    renderRole();stats();
+  };
+  window.rjR=function(id){
+    var regs=ls('registrations');
+    regs.forEach(function(r){if((r.id||'')===id) r.status='rejected';});
+    ss('registrations',regs);
+    toast('已拒绝');
+    renderRole();
+  };
+  window.delR=function(id){
+    if(!confirm('确定删除？'))return;
+    var regs=ls('registrations');
+    regs=regs.filter(function(r){return(r.id||'')!==id;});
+    ss('registrations',regs);
+    toast('已删除');
+    renderRole();stats();
+  };
+
+  // === 登录 ===
+  function doLogin(){
+    var u=$('inUser').value.trim();
+    var p=$('inPass').value;
+    if(u===ADMIN_USER&&p===ADMIN_PASS){
+      localStorage.setItem('village_admin_session','ok');
+      $('loginPage').style.display='none';
+      $('adminPage').classList.remove('hidden');
+      $('headerBar').style.display='flex';
+      stats();renderVillage();
+    } else {
+      $('errMsg').textContent='账号或密码错误';
+      $('errMsg').style.display='block';
+    }
+  }
+
+  function mylogout(){
+    localStorage.removeItem('village_admin_session');
+    $('loginPage').style.display='flex';
+    $('adminPage').classList.add('hidden');
+    $('inPass').value='admin123';
+    $('errMsg').style.display='none';
+  }
+
+  // 自动登录
+  if(localStorage.getItem('village_admin_session')==='ok'){
+    $('loginPage').style.display='none';
+    $('adminPage').classList.remove('hidden');
+    stats();renderVillage();
+  } else {
+    $('loginPage').style.display='flex';
+    $('adminPage').classList.add('hidden');
+    $('headerBar').style.display='none';
+  }
+
+  // 事件
+  $('btnLogin').onclick=doLogin;
+  $('inPass').onkeyup=function(e){if(e.key==='Enter')doLogin();};
+})();
+</script>
+</body>
+</html>
