@@ -1,7 +1,7 @@
 // cloud_db.js - Supabase 云数据库版（anon key + 读写）
 (function() {
   var SUPABASE_URL = 'https://eivqbbxyllsorbvgqsju.supabase.co';
-  var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpdnFiYnh5bGxzb3Jidmdxc2p1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjcxMjMwOSwiZXhwIjoyMDk4Mjg4ODMwOX0.druJ-whOvHcA5fGrTaEvzRChB3sV4WRMf6cWR3Ru3fw';
+  var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpdnFiYnh5bGxzb3Jidmdxc2p1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3MTIzMDksImV4cCI6MjA5ODI4ODMwOX0.QeKnbo1cgA0yGMOEydML3PNXatH1V1QXfW0hyxRy7KY';
   var TABLE = 'village_data';
   var ROW_ID = 'init';
 
