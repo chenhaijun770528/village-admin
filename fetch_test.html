@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Supabase测试</title>
+</head>
+<body>
+<h2>Supabase fetch 测试</h2>
+<pre id="out">测试中...</pre>
+<script>
+var key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpdnFiYnh5bGxzb3Jidmdxc2p1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3MTIzMDksImV4cCI6MjA5ODI4ODMwOX0.QeKnbo1cgA0yGMOEydML3PNXatH1V1QXfW0hyxRy7KY';
+var url = 'https://eivqbbxyllsorbvgqsju.supabase.co/rest/v1/village_data?select=id,data';
+var start = Date.now();
+fetch(url, {
+  headers: {
+    'apikey': key,
+    'Authorization': 'Bearer ' + key,
+    'Accept': 'application/json'
+  }
+}).then(function(res) {
+  var ms = Date.now() - start;
+  return res.text().then(function(t) {
+    document.getElementById('out').textContent =
+      '状态: ' + res.status + '\n' +
+      '耗时: ' + ms + 'ms\n' +
+      '响应: ' + t.substring(0, 300);
+  });
+}).catch(function(e) {
+  document.getElementById('out').textContent = '网络错误: ' + e.message;
+});
+</script>
+</body>
+</html>
