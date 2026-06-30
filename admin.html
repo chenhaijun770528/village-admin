@@ -63,12 +63,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 
   function api(path, opts) {
     opts = opts || {};
+    opts.method = opts.method || 'GET';
     opts.headers = opts.headers || {};
-    opts.headers['apikey'] = SUPABASE_KEY;
+    // 微信内置浏览器：key放URL参数，避免header被拦截
+    var sep = path.indexOf('?') >= 0 ? '&' : '?';
+    var fullUrl = SUPABASE_URL + path + sep + 'apikey=' + encodeURIComponent(SUPABASE_KEY);
     opts.headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
     opts.headers['Accept-Profile'] = 'public';
     opts.headers['Content-Profile'] = 'public';
-    return fetch(SUPABASE_URL + path, opts).then(function(r) {
+    if (opts.body) opts.headers['Content-Type'] = 'application/json';
+    return fetch(fullUrl, opts).then(function(r) {
       return r.text().then(function(t) { return { ok: r.ok, status: r.status, body: t }; });
     });
   }
